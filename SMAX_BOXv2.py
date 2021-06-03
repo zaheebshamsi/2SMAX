@@ -6,9 +6,14 @@ import itertools
 import tkinter.messagebox
 
 
-def reset_dropdown():
+def reset_dropdown(drop_event_reset):
     # delete items of Combobox
-    # drop.clear()
+    print("Hello")
+    print(drop_event_reset)
+    print("End")
+    for drop_combo in drop_event_reset:
+        drop_combo.set(' ')
+    # drop.set(' ')
     tkinter.messagebox.showinfo("Microfocus 2SMAX", "Reset Done")
 
 
@@ -108,16 +113,20 @@ class SmaxBox:
 
         drop1.pack()'''
 
+        global drop
+        drop_event_reset = []
         for i in range(len(remove_duplicates_from_json)):
             drop = ttk.Combobox(LeftFrame1, state='readonly', values=options, font="29")
+            print(drop)
             drop.grid(row=i + 1, column=10, sticky="nsew")
+            drop_event_reset.append(drop)
             # drop.current(0)
 
         """Buttons"""
         push_button = Button(RightMainFrame, text="Push", padx=10, pady=10)
         push_button.grid(row=1, column=0, sticky="nsew")
 
-        reset_button = Button(RightMainFrame, text="Reset", command=reset_dropdown, padx=10, pady=10)
+        reset_button = Button(RightMainFrame, text="Reset", command=lambda: reset_dropdown(drop_event_reset), padx=10, pady=10)
         reset_button.grid(row=2, column=0, sticky="nsew")
 
         reset_button = Button(RightMainFrame, text="Exit", command=root.destroy, padx=10, pady=10)
