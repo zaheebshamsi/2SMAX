@@ -1,6 +1,5 @@
 from tkinter import *
 from tkinter import ttk
-import random
 import tkinter.messagebox
 import json
 import itertools
@@ -120,6 +119,9 @@ class SmaxBox:
 
         reset_button = Button(RightMainFrame, text="Reset", command=reset_dropdown, padx=10, pady=10)
         reset_button.grid(row=2, column=0, sticky="nsew")
+
+        reset_button = Button(RightMainFrame, text="Exit", command=root.destroy, padx=10, pady=10)
+        reset_button.grid(row=3, column=0, sticky="nsew")
 
     # --------------------------------------------------------- #
 
