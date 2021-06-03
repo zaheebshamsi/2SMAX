@@ -1,0 +1,21 @@
+{
+  "ticket": [
+    {
+      "Ticket Number": "TCJI1HX",
+      "Age (days)": 192,
+      "Email": "andre.lorel@someitcorp",
+      "Maiden Name": "Andre",
+      "Middle Name": "",
+      "Last Name": "Lorel",
+      "Employee ID": 26339472,
+      "Problem Description": "Printer not working"
+    },
+    {
+      "Ticket Number": "TCS71HX",
+      "Age (days)": 12,
+      "Technician Name": "Johan Grosse",
+      "Solution Description": "Rebooted the printer",
+      "Resolution Time (min)": 48
+    }
+  ]
+}
