@@ -8,12 +8,8 @@ import tkinter.messagebox
 
 def reset_dropdown(drop_event_reset):
     # delete items of Combobox
-    print("Hello")
-    print(drop_event_reset)
-    print("End")
     for drop_combo in drop_event_reset:
         drop_combo.set(' ')
-    # drop.set(' ')
     tkinter.messagebox.showinfo("Microfocus 2SMAX", "Reset Done")
 
 
@@ -41,14 +37,11 @@ def design_get_result(root, LeftFrame2, LeftFrame1, RightFrame0):
     """Display JSON keys as labels"""
     i = 0
     res = list()
-    print(data)
     for ticket_details in data['ticket']:
         res.append(list(ticket_details.keys()))
     remove_dict = list(itertools.chain.from_iterable(res))
     remove_duplicates_from_json = []
     [remove_duplicates_from_json.append(x) for x in remove_dict if x not in remove_duplicates_from_json]
-
-    print(remove_duplicates_from_json)
 
     for label_json_key in remove_duplicates_from_json:
         i += 1
@@ -82,7 +75,6 @@ def design_get_result(root, LeftFrame2, LeftFrame1, RightFrame0):
     drop_event_reset = []
     for i in range(len(remove_duplicates_from_json)):
         drop = ttk.Combobox(LeftFrame2, state='readonly', values=options, font="20")
-        print(drop)
         drop.grid(row=i + 1, column=1, sticky="nsew", padx=10, pady=15)
         drop_event_reset.append(drop)
         # drop.current(0)
