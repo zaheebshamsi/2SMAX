@@ -1,34 +1,36 @@
-import itertools
-a = {"name": "Zaheeb", "last name": "Shamsi"}
+import tkinter as tk
+from tkinter import ttk
 
-b = {"name": "Ritika", "class": "MCA"}
 
-c = {"college": "VIT"}
+class ScrollableFrame(ttk.Frame):
+    def __init__(self, container, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+        self.new_frame = ttk.Frame(self.scrollable_frame)
 
-print(a.keys(), b.keys(), c.keys())
+        self.new_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
 
-aaa = []
+        canvas.create_window((0, 0), window=self.new_frame, anchor="nw")
 
-for k in a.keys(), b.keys(), c.keys():
-    print(list(k))
-    aaa.append(list(k))
-print(aaa)
-bbb = list(itertools.chain.from_iterable(aaa))
-res=[]
-[res.append(x) for x in bbb if x not in res]
+        canvas.configure(yscrollcommand=scrollbar.set)
 
-print(res)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-# for k in a.keys():
-#     aaa.append(k)
-#     print(k)
-# print(aaa)
-# for k in b.keys():
-#     aaa.append(k)
-#     print(k)
-# print(aaa)
-# for k in c.keys():
-#     aaa.append(k)
-#     print(k)
-# print(aaa)
 
+root = tk.Tk()
+
+frame = ScrollableFrame(root)
+
+for i in range(500):
+    ttk.Label(frame.new_frame, text="Sample scrolling label").pack()
+
+frame.pack()
+root.mainloop()
