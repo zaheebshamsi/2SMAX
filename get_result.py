@@ -17,7 +17,7 @@ def reset_dropdown(drop_event_reset):
     tkinter.messagebox.showinfo("Microfocus 2SMAX", "Reset Done")
 
 
-def design_get_result(root, LeftFrame2, LeftFrame1, RightFrame0, RightMainFrame):
+def design_get_result(root, LeftFrame2, LeftFrame1, RightFrame0):
     data = json_load("snow.json")
 
     customer_ticket_tool = open("snow.json", "r").name.split('.')[0].upper()
@@ -55,7 +55,7 @@ def design_get_result(root, LeftFrame2, LeftFrame1, RightFrame0, RightMainFrame)
         var = StringVar()
         label = Label(LeftFrame1, textvariable=var, bd=5, relief=RIDGE, padx=5, pady=5)
         var.set(label_json_key)
-        label.grid(row=i, column=1, sticky="nsew", padx=10, pady=10)
+        label.grid(row=i, column=1, sticky="nsew", padx=12, pady=12)
 
     """Drop Down under SMAX Label"""
     # Dropdown SMAX menu options
@@ -88,13 +88,13 @@ def design_get_result(root, LeftFrame2, LeftFrame1, RightFrame0, RightMainFrame)
         # drop.current(0)
 
     """Buttons"""
-    push_button = Button(RightFrame0, text="Push")
+    push_button = Button(RightFrame0, text="POST", height=2)
     push_button.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
 
-    reset_button = Button(RightFrame0, text="Reset", command=lambda: reset_dropdown(drop_event_reset))
+    reset_button = Button(RightFrame0, text="Reset", command=lambda: reset_dropdown(drop_event_reset), height=2)
     reset_button.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
 
-    reset_button = Button(RightFrame0, text="Exit", command=root.destroy)
+    reset_button = Button(RightFrame0, text="Exit", command=root.destroy, height=2)
     reset_button.grid(row=3, column=0, sticky="nsew", padx=10, pady=10)
 
 
