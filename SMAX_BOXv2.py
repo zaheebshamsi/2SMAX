@@ -18,7 +18,7 @@ class SmaxBox:
         root.columnconfigure(0, weight=1)
         self.root.configure(background='powder blue')
 
-        self.MainFrame = Frame(root, bd=20, width=1280, height=1057, bg="cadet blue", padx=20, pady=20,relief=RIDGE)
+        self.MainFrame = Frame(root, bd=20, width=1280, height=1057, bg="cadet blue", padx=20, pady=20, relief=RIDGE)
         self.LeftMainFrame = Frame(self.MainFrame, bd=10, width=640, height=657, bg="powder blue", relief=RIDGE)
         self.RightMainFrame = LabelFrame(self.MainFrame, bd=10, width=640, height=457, bg="powder blue", relief=RIDGE)
         self.RightFrame0 = Frame(self.RightMainFrame, bd=10, width=400, height=558, bg="#3d3d5c", relief=RIDGE)
@@ -27,7 +27,6 @@ class SmaxBox:
         self.LeftFrame2 = Frame(self.LeftMainFrame, bd=10, width=400, height=558, bg="#3d3d5c", relief=RIDGE)
 
     def design_frames(self):
-
         """Outer Main Frame"""
         self.MainFrame.pack()
 
@@ -55,8 +54,8 @@ class SmaxBox:
 
     def execute(self):
         design_get_result(root, application.LeftFrame2, application.LeftFrame1,
-                          application.RightFrame0, application.RightMainFrame)
-        design_get_api(root, application.LeftFrame0)
+                          application.RightFrame0)
+        design_get_api(application.LeftFrame0)
 
 
 if __name__ == '__main__':
