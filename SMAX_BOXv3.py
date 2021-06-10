@@ -9,7 +9,7 @@ from api_uiv3 import *
 
 
 class SmaxBox:
-    def __init__(self, root, root_get_api):
+    def __init__(self, root):
         self.root = root
         self.root.title("Microfocus 2SMAX")
         self.root.geometry("1350x800+0+0")
@@ -62,7 +62,7 @@ class SmaxBox:
 
 if __name__ == '__main__':
     root = Tk()
-    application = SmaxBox(root, None)
+    application = SmaxBox(root)
     application.design_frames()
     application.execute()
     root.mainloop()
