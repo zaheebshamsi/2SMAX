@@ -274,7 +274,8 @@ class SelectionDestination(tk.Frame):
         # rest_url_textbox.insert(tk.END, '')
         password_textbox_destination.place(relx=0.64, rely=0.63, anchor="center", height=37)
 
-        def test_connection(rest_url_textbox_destination, username_textbox_destination, password_textbox_destination,
+        def test_connection(rest_url_textbox_destination, username_textbox_destination,
+                            password_textbox_destination,
                             dropdown):
             rest_url_textbox_data_destination = rest_url_textbox_destination.get("1.0", "end-1c")
             username_textbox_data_destination = username_textbox_destination.get("1.0", "end-1c")
@@ -377,10 +378,6 @@ class SelectionDestination(tk.Frame):
                                                              username_textbox_destination,
                                                              password_textbox_destination, dropdown),
                                              Mapping.map_2(self, self.rest_url_textbox_destination)])
-        self.bind('<Return>', lambda: [test_connection(self.rest_url_textbox_destination,
-                                                       username_textbox_destination,
-                                                       password_textbox_destination, dropdown),
-                                       Mapping.map_2(self, self.rest_url_textbox_destination)])
         button1['font'] = myFont
         button1.place(relx=0.54, rely=0.73)
 
