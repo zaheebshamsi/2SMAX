@@ -1,12 +1,18 @@
 """
 
-1. All the files generated (created) during this code execution starts with MF_SMAX_<filename>.
+1. __author__: @Zaheeb Shamsi
+2. __date_created__: 01/06/2021
+3. Draft Versions Rejected: 3
+4. Team Members: Zaheeb Shamsi, Chaya TD, Sunil Nair, Dharmakrishna Thomas, Praveen V, Vaasuthevan Gopalakrishnan.
+-------------------------------------------------------------------------------------------------------------------
+1. All the external files generated (created) during this code execution starts with MF_SMAX_<filename>.
 Search for MF_SMAX string to quick access of those files.
+2.
+
 """
 import ast
 import threading
 import time
-from collections import OrderedDict
 from tkinter.ttk import Combobox
 import tkinter.font as font
 import requests
@@ -14,11 +20,9 @@ import sys
 import tkinter as tk
 from tkinter import font as tkfont, ttk
 import tkinter.messagebox
-from json import dumps, loads, load, dump
+from json import dumps, loads, load
 from PIL import ImageTk, Image
-
-
-# to store the token into a text file. - > NO
+from os import system
 
 
 class ToSMAXApp(tk.Tk):
@@ -163,22 +167,10 @@ class SelectionSource(tk.Frame):
                         res = [int(ele) if ele.isdigit() else ele for ele in tenant_id_1]
                         res1 = list(i for i in res if isinstance(i, int))
                         tenant_id = int(res1[0])
-                        # print(url)
-                        # print(server_name_ip)
-                        # print(tenant_id_1)
-                        # print(res)
-                        # print(res1)
-                        # print(tenant_id)
 
-                        # server_name_ip = url.split('/')[2]
-                        #
-                        # tenant_id_find = url.find('TENANTID=')
-                        # ampersand_find = url.find('&')
-                        #
-                        # tenant_id = url[tenant_id_find + 9:ampersand_find]
                         url_token = "https://" + str(
                             server_name_ip) + "/auth/authentication-endpoint/authenticate/login?TENANTID=" \
-                                    + str(tenant_id)
+                            + str(tenant_id)
                         payload = {"Login": username_textbox_data_source, "password": password_textbox_data_source}
                         headers = {"Content-Type": "application/json"}
 
@@ -194,7 +186,7 @@ class SelectionSource(tk.Frame):
                                 result_json = response.content.decode('utf-8')
                                 result_json_to_file = loads(result_json)
                                 json_file = dumps(result_json_to_file, indent=4)
-                                with open("source.json", "w") as outfile:
+                                with open("MF_SMAX_source.json", "w") as outfile:
                                     outfile.write(json_file)
                             else:
                                 tkinter.messagebox.showwarning("Response",
@@ -613,7 +605,7 @@ class Mapping(SelectionSource, SelectionDestination):
         print(type(new_json_layout_list))
 
         new_json_layout_json = dumps(new_json_layout_list, indent=4)
-        with open("for_destination_updated_file.json", "w") as outfile:
+        with open("MF_SMAX_for_destination_updated_file.json", "w") as outfile:
             outfile.write(new_json_layout_json)
         print(new_json_layout_json)
         print(type(new_json_layout_json))
@@ -631,6 +623,8 @@ class Mapping(SelectionSource, SelectionDestination):
         else:
             tkinter.messagebox.showerror("Error", "There was a problem parsing the JSON file, Please retry!")
             return False
+
+        system("whoami")
 
 
 if __name__ == "__main__":
