@@ -2,8 +2,8 @@
 
 1. __author__: @Zaheeb Shamsi
 2. __date_created__: 01/06/2021
-3. __last_modified__: 01/07/2021
-4. Draft Versions Rejected: 3
+3. __last_modified__: 24/08/2021
+4. Draft Versions Rejected: 4
 5. Times Refactored after production : 0 (Please increase +1 as a counter if code is refactored
                                        or changes are made to the functionality or UI after Production)
 6. Team Members: Zaheeb Shamsi(Developer), Chaya TD(Developer), Sunil Nair(Solution Architect),
@@ -11,12 +11,25 @@
 -------------------------------------------------------------------------------------------------------------------
 @Todo: Add more Menu Bar Items (Line-61)
 @Todo: Provide operation based on Update/Create -> Done
-@Todo: Add a blocker for sending and receiving at least 10 fields and if it is more than 10 - ask them to come us.
+@Todo: (HOLD)Add a blocker for sending and receiving at least 10 fields and if it is more than 10 - ask them to come us.
+@Todo: Add multithreading to handle different processes at the same time to avoid 'Not Responding'.
+@Todo: (HOLD)Some key based licencing to add.
+__________________________________________________________________
+@Jay: 1. To validate if the drop-down is not empty.
+2. To return a dict/list of entries failed with their IDs.. (connection class to ref the Transfer class). -> done
+3. Add a askquestion on the transfer all entries button to confirm to push all entries. (Message: Its irreversible) -> done
+4. Remove edit button...
+5. Provide invalid pass or username instead of Resp 500
+6. Change Source/Destination to the dropdown SNOW/SMAX
+7. Add Msgbox to the third page.
+8. Interchange the functionality of third page --> Source(dropdown left) and destination (fixed label right)
+    [Left - static / right dynamic] -----> DONE
+__________________________________________________________
 // Ask to install in root folder
 //Check for proxy code.. and add it in the code.
 -------------------------------------------------------------------------------------------------------------------
 Classes:
-- ToSMAXApp: Base class (root in tkinter) which instantiates other 4 classes.
+- ToSMAXApp: Base class (root in tkinter) which creates root GUI and instantiates other 4 classes.
 - SelectionSource: The class for selection of entries from source.
 - SelectionDestination: The class for selection of entries from destination.
 - Mapping: The class which maintain records of mapping from source to destination.
@@ -36,18 +49,22 @@ Classes:
 
 """
 import ast
+import re
+import sys
 import threading
 import time
+from collections import OrderedDict
+from datetime import datetime
 from tkinter.ttk import Combobox
 import tkinter.font as font
 import requests
-import sys
 import tkinter as tk
-from tkinter import font as tkfont, ttk
+from tkinter import font as tkfont
 import tkinter.messagebox
 from json import dumps, loads, load
 from PIL import ImageTk, Image
 from os import system
+
 from transfer_records import connect
 
 
@@ -131,8 +148,8 @@ class SelectionSource(tk.Frame):
 
         tools = ['SMAX', 'SNOW']
 
-        dropdown = Combobox(self, values=tools, state='readonly', width=20)
-        dropdown.place(relx=0.5, rely=0.2)
+        self.dropdown_source = Combobox(self, values=tools, state='readonly', width=20)
+        self.dropdown_source.place(relx=0.5, rely=0.2)
 
         label1 = tk.Label(self, text='Enter RESTFUL URL', bg='#fffdfd')
         label1.place(relx=0.41, rely=0.4)
@@ -145,7 +162,7 @@ class SelectionSource(tk.Frame):
 
         self.rest_url_textbox_source = tk.Text(self, height=2, width=50, font="Arial 10")
         self.rest_url_textbox_source.insert(tk.END,
-                                            'https://btp-hvm01633.swinfra.net/rest/488330779/ems/Person?layout=Name,Email')
+                                            'https://btp-hvm01633.swinfra.net/rest/488330779/ems/Incident?layout=Status,DisplayLabel,Description,RequestedByPerson,ImpactScope,RegisteredForActualService,Urgency')
         self.rest_url_textbox_source.place(relx=0.64, rely=0.42, anchor="center")
 
         username_textbox_source = tk.Text(self, height=2, width=50, font='Arial 10')
@@ -156,28 +173,30 @@ class SelectionSource(tk.Frame):
         password_textbox_source.insert(tk.END, 'Automation_123')
         password_textbox_source.place(relx=0.64, rely=0.63, anchor="center", height=37)
 
-        def test_connection(rest_url_textbox_source, username_textbox_source, password_textbox_source, dropdown):
+        def test_connection(rest_url_textbox_source, username_textbox_source, password_textbox_source, dropdown_source):
             rest_url_textbox_data_source = rest_url_textbox_source.get("1.0", "end-1c")
             username_textbox_data_source = username_textbox_source.get("1.0", "end-1c")
             password_textbox_data_source = password_textbox_source.get()
-            dropdown_value = dropdown.get()
+            dropdown_value = dropdown_source.get()
             try:
                 if not rest_url_textbox_data_source or not username_textbox_data_source \
                         or not password_textbox_data_source or not dropdown_value:
                     tkinter.messagebox.showerror("FATAL!!", "Please fill all the fields")
                     return False
-                elif 'lastupdatetime' in rest_url_textbox_data_source.lower():
+                elif re.search(r'\blastupdatetime\b', rest_url_textbox_data_source.lower()):
                     tkinter.messagebox.showwarning("Layout Warning",
                                                    "LastUpdateTime layout can no longer be used to push the data, "
                                                    "Please remove 'LastUpdateTime' from the URI")
+                    self.controller.show_frame("SelectionSource")
                     return False
-                elif 'id' in rest_url_textbox_data_source.lower():
+                elif re.search(r'\bid\b', rest_url_textbox_data_source.lower()):
                     tkinter.messagebox.showwarning("Layout Warning",
                                                    "ID layout is already received from the REST Call, "
                                                    "Please remove 'ID' from the URI")
+                    self.controller.show_frame("SelectionSource")
                     return False
                 else:
-                    if dropdown.get() == 'SMAX':
+                    if dropdown_source.get() == 'SMAX':
                         url = rest_url_textbox_source.get("1.0", "end-1c")
 
                         server_name_ip = url.split('/')[2]
@@ -204,6 +223,14 @@ class SelectionSource(tk.Frame):
                             if response.status_code == 200:
                                 result_json = response.content.decode('utf-8')
                                 result_json_to_file = loads(result_json)
+                                failure = result_json_to_file['meta']['completion_status']
+                                if str(failure).lower() == 'failed':
+                                    tk.messagebox.showerror(
+                                        "httpStatus: " + str(result_json_to_file['meta']['errorDetails']['httpStatus']),
+                                        "Invalid Response from the Source API\n\n" + str(
+                                            result_json_to_file['meta']['errorDetails'][
+                                                'message']) + "\n\n\nPlease close this window and try again!!")
+                                    return False
                                 json_file = dumps(result_json_to_file, indent=4)
                                 try:
                                     with open("MF_SMAX_source.json", "w") as outfile:
@@ -215,8 +242,10 @@ class SelectionSource(tk.Frame):
                                                                "Response Code: " + str(response.status_code))
                                 return
                         else:
-                            tkinter.messagebox.showwarning("Response",
-                                                           "Response Code: " + str(response.status_code))
+                            tkinter.messagebox.showwarning("Token Response",
+                                                           "Invalid Username/Password - Response Code: " +
+                                                           str(response.status_code) +
+                                                           '\n')
                             return
                     else:
                         pass
@@ -241,13 +270,16 @@ class SelectionSource(tk.Frame):
             except NameError:
                 tkinter.messagebox.showerror("FATAL!!", "Please fill all the fields")
                 return
+            except requests.exceptions.ConnectionError:
+                tkinter.messagebox.showerror("FATAL!!",
+                                             "Can not find the host: " + rest_url_textbox_data_source.split('/')[2])
 
             except Exception as ssl:
                 tkinter.messagebox.showerror("FATAL!!", str(ssl) + str(ssl.__class__))
 
         button1 = tk.Button(self, text='Test Connection', relief='raised', font=controller.button_font,
                             command=lambda: [test_connection(self.rest_url_textbox_source, username_textbox_source,
-                                                             password_textbox_source, dropdown),
+                                                             password_textbox_source, self.dropdown_source),
                                              Mapping.map_1(self, self.rest_url_textbox_source)])
         button1.place(relx=0.54, rely=0.73)
 
@@ -279,8 +311,8 @@ class SelectionDestination(tk.Frame):
 
         tools = ['SMAX', 'SNOW']
 
-        dropdown = Combobox(self, values=tools, state='readonly', width=20)
-        dropdown.place(relx=0.5, rely=0.2)
+        self.dropdown_destination = Combobox(self, values=tools, state='readonly', width=20)
+        self.dropdown_destination.place(relx=0.5, rely=0.2)
 
         label1 = tk.Label(self, text='Enter RESTFUL URL', bg='#fffdfd')
         label1.place(relx=0.41, rely=0.4)
@@ -293,7 +325,7 @@ class SelectionDestination(tk.Frame):
 
         self.rest_url_textbox_destination = tk.Text(self, height=2, width=50, font="Arial 10")
         self.rest_url_textbox_destination.insert(tk.END,
-                                                 'https://btp-hvm01633.swinfra.net/rest/488330779/ems/Person?layout=Name,Email')
+                                                 'https://btp-hvm01633.swinfra.net/rest/936071520/ems/Incident?layout=Status,DisplayLabel,Description,RequestedByPerson,ImpactScope,RegisteredForActualService,Urgency')
         self.rest_url_textbox_destination.place(relx=0.64, rely=0.42, anchor="center")
 
         self.username_textbox_destination = tk.Text(self, height=2, width=50, font='Arial 10')
@@ -306,28 +338,30 @@ class SelectionDestination(tk.Frame):
 
         def test_connection(rest_url_textbox_destination, username_textbox_destination,
                             password_textbox_destination,
-                            dropdown):
+                            dropdown_destination):
             rest_url_textbox_data_destination = rest_url_textbox_destination.get("1.0", "end-1c")
             username_textbox_data_destination = username_textbox_destination.get("1.0", "end-1c")
             password_textbox_data_destination = password_textbox_destination.get()
-            dropdown_value = dropdown.get()
+            dropdown_value = dropdown_destination.get()
             try:
                 if not rest_url_textbox_data_destination or not username_textbox_data_destination \
                         or not password_textbox_data_destination or not dropdown_value:
                     tkinter.messagebox.showerror("FATAL!!", "Please fill all the fields")
                     return False
-                elif 'lastupdatetime' in rest_url_textbox_data_destination.lower():
+                elif re.search(r'\blastupdatetime\b', rest_url_textbox_data_destination.lower()):
                     tkinter.messagebox.showwarning("Layout Warning",
                                                    "LastUpdateTime layout is already received from the REST Call, "
                                                    "Please remove 'LastUpdateTime' from the URI")
+                    self.controller.show_frame("SelectionDestination")
                     return False
-                elif 'id' in rest_url_textbox_data_destination.lower():
+                elif re.search(r'\bid\b', rest_url_textbox_data_destination.lower()):
                     tkinter.messagebox.showwarning("Layout Warning",
                                                    "ID layout is already received from the REST Call, "
                                                    "Please remove 'ID' from the URI")
+                    self.controller.show_frame("SelectionDestination")
                     return False
                 else:
-                    if dropdown.get() == 'SMAX':
+                    if dropdown_destination.get() == 'SMAX':
                         url = rest_url_textbox_destination.get("1.0", "end-1c")
 
                         server_name_ip = url.split('/')[2]
@@ -382,7 +416,8 @@ class SelectionDestination(tk.Frame):
         button1 = tk.Button(self, text='Test Connection', relief='raised',
                             command=lambda: [test_connection(self.rest_url_textbox_destination,
                                                              self.username_textbox_destination,
-                                                             self.password_textbox_destination, dropdown),
+                                                             self.password_textbox_destination,
+                                                             self.dropdown_destination),
                                              Mapping.map_2(self, self.rest_url_textbox_destination)])
         button1['font'] = controller.button_font
         button1.place(relx=0.54, rely=0.73)
@@ -395,7 +430,7 @@ class SelectionDestination(tk.Frame):
 
 class Mapping(SelectionSource, SelectionDestination):
     def __init__(self, parent, controller):
-        global frame_canvas, source_variable, dropdown, button_create_json, \
+        global frame_canvas, source_variable, button_create_json, \
             button_transfer_one_entry, created_json_text_box, operation_dropdown
         SelectionSource.__init__(self, parent, controller)
         SelectionDestination.__init__(self, parent, controller)
@@ -415,17 +450,19 @@ class Mapping(SelectionSource, SelectionDestination):
         canvas.create_window((0, 0), window=frame_canvas, anchor='nw')
         frame_canvas.bind_all("<Configure>", scrollbar_bind)
 
-        myFont = font.Font(family='Arial', size=15, weight='bold', slant="italic")
+        # myFont = font.Font(family='Arial', size=15, weight='bold', slant="italic")
 
-        var = tk.StringVar()
-        label = tk.Label(frame_canvas, textvariable=var, font=myFont, bg='grey')
-        var.set("  SOURCE API COLUMNS")
-        label.grid(row=1, column=0, padx=8)
-
-        var = tk.StringVar()
-        label = tk.Label(frame_canvas, textvariable=var, font=myFont, bg='grey')
-        var.set("DESTINATION API COLUMNS")
-        label.grid(row=1, column=1, padx=8)
+        # var = tk.StringVar()
+        # label = tk.Label(frame_canvas, textvariable=var, font=myFont, bg='grey')
+        # # var.set("  SOURCE API COLUMNS")
+        # var.set("{} API COLUMNS".format(self.dropdown_source.get()))
+        # label.grid(row=1, column=1, padx=8)
+        #
+        # var = tk.StringVar()
+        # label = tk.Label(frame_canvas, textvariable=var, font=myFont, bg='grey')
+        # # var.set("DESTINATION API COLUMNS")
+        # var.set("{} API COLUMNS".format(str(self.dropdown_destination.get())))
+        # label.grid(row=1, column=0, padx=8)
 
         operation_textbox = tk.Text(frame_canvas, width=25, height=1, bg='#fffdfd', font=25, bd=3)
         operation_textbox.insert(tk.END, "Operation")
@@ -462,6 +499,14 @@ class Mapping(SelectionSource, SelectionDestination):
     # @staticmethod
     def map_1(self, rest_url_textbox_source):
         global row_array_layout, row_array_dropdown
+
+        myFont = font.Font(family='Arial', size=15, weight='bold', slant="italic")
+        var = tk.StringVar()
+        label = tk.Label(frame_canvas, textvariable=var, font=myFont, bg='grey')
+        # var.set("  SOURCE API COLUMNS")
+        var.set("{} API COLUMNS".format(self.dropdown_source.get()))
+        label.grid(row=1, column=1, padx=8)
+
         row_array_layout = []
         row_array_dropdown = list()
         rest_url_textbox_data_source = rest_url_textbox_source.get("1.0", "end-1c")
@@ -473,18 +518,28 @@ class Mapping(SelectionSource, SelectionDestination):
 
         else:
             layout = sp_layout.split(',')
-        layout.append('Id')
+        res = 'id' in (string.lower() for string in layout)
+        if not res:
+            layout.append('Id')
 
         x = 2
         for i in range(len(layout)):
             source_variable = tk.Text(frame_canvas, width=25, height=1, bg='#fffdfd', font=25, bd=3)
             source_variable.insert(tk.END, layout[i])
             row_array_layout.append(source_variable)
-            row_array_layout[i].grid(row=x, column=0, padx=5, pady=5)
+            row_array_layout[i].grid(row=x, column=1, padx=5, pady=5)
             row_array_layout[i].bindtags((source_variable, self, "all"))
             x += 1
 
     def map_2(self, rest_url_textbox_destination):
+
+        myFont = font.Font(family='Arial', size=15, weight='bold', slant="italic")
+        var = tk.StringVar()
+        label = tk.Label(frame_canvas, textvariable=var, font=myFont, bg='grey')
+        # var.set("DESTINATION API COLUMNS")
+        var.set("{} API COLUMNS".format(str(self.dropdown_destination.get())))
+        label.grid(row=1, column=0, padx=8)
+
         rest_url_textbox_data_destination = rest_url_textbox_destination.get("1.0", "end-1c")
 
         sp = rest_url_textbox_data_destination.split('layout=')
@@ -494,16 +549,21 @@ class Mapping(SelectionSource, SelectionDestination):
 
         else:
             options = sp_layout.split(',')
-        options.append('Id')
+        res = 'id' in (string.lower() for string in options)
+        if not res:
+            options.append('Id')
 
         y = 2
         for j in range(len(options)):
             dropdown = Combobox(frame_canvas, values=options, state='readonly', font=25)
             row_array_dropdown.append(dropdown)
-            row_array_dropdown[j].grid(row=y, column=1, sticky="nsew", padx=10, pady=25)
+            row_array_dropdown[j].grid(row=y, column=0, sticky="nsew", padx=10, pady=25)
             y += 1
-        button_create_json['command'] = lambda: Mapping.push_and_map(self, source_variable_mapping=row_array_layout,
-                                                                     dropdown_value_mapping=row_array_dropdown)
+        try:
+            button_create_json['command'] = lambda: Mapping.push_and_map(self, source_variable_mapping=row_array_layout,
+                                                                         dropdown_value_mapping=row_array_dropdown)
+        except Exception:
+            tkinter.messagebox.showerror("ERROR", "Key Error, Please Fill all the fields")
 
     def push_and_map(self, source_variable_mapping=None, dropdown_value_mapping=None):
         temp_source = []
@@ -521,6 +581,12 @@ class Mapping(SelectionSource, SelectionDestination):
 
         with open('MF_SMAX_source.json') as sj:
             source_data = load(sj)
+        failure = source_data['meta']['completion_status']
+        if str(failure).lower() == 'failed':
+            tk.messagebox.showerror("httpStatus: " + str(source_data['meta']['errorDetails']['httpStatus']),
+                                    "Invalid Response from the Source API\n\n" + str(source_data['meta'][
+                                                                                         'errorDetails']) + "\n\n\nPlease close this window and try again!!")
+            return False
 
         sorted_on_temp_source = []
         for del_last_update_time in source_data['entities']:
@@ -532,7 +598,7 @@ class Mapping(SelectionSource, SelectionDestination):
             sorted_on_temp_source.append(di)
 
         entitiy_type = source_data['entities'][0]['entity_type']
-        operation = str(operation_dropdown.get()).upper()  # #########Make it dynamic##########
+        operation = str(operation_dropdown.get()).upper()
 
         json_layout = [{"entities": [{"entity_type": entitiy_type, "properties": {}}], "operation": operation}]
 
@@ -559,7 +625,7 @@ class Mapping(SelectionSource, SelectionDestination):
             outfile.write(new_json_layout_json)
         idk = loads(new_json_layout_json)
 
-        created_json_text_box.insert(tk.END, dumps(idk[6], indent=4))
+        created_json_text_box.insert(tk.END, dumps(idk[0], indent=4))
         # created_json_text_box['state'] = 'disabled' # Editable option for user enabled.
 
         if len(loads(new_json_layout_json)) == len(source_data['entities']):
@@ -579,10 +645,13 @@ class Transfer(Mapping):
         tk.Frame.__init__(self, parent, background='#fffdfd')  # #3d3d5c #1a2933
         self.controller = controller
 
-        global transfer_text_box_all_json, return_to_first_page_button, exit_button, edit_button, push_button
+        global transfer_text_box_all_json, return_to_first_page_button, exit_button, edit_button, push_button, \
+            error_output_textbox
 
         transfer_text_box_all_json = tk.Text(self, width=75, height=36, bg='cyan')
         transfer_text_box_all_json.pack(side=tk.LEFT)
+        error_output_textbox = tk.Text(self, width=55, height=36, bg='powder blue')
+        error_output_textbox.pack(side=tk.RIGHT)
 
         def edit():
             tkinter.messagebox.showwarning("2SMAX EDIT WARNING", "The data shown is auto-generated, "
@@ -616,7 +685,7 @@ class Transfer(Mapping):
         #########################################
         # Do some task here to push one record  #
         #########################################
-        global status_code, result
+        global status_code, result, completion_status
 
         url = self.rest_url_textbox_destination.get("1.0", "end-1c")
         server_name_ip = url.split('/')[2]
@@ -630,66 +699,115 @@ class Transfer(Mapping):
 
         try:
 
-            result, status_code = connect(external_access_host=server_name_ip,
-                                          tenant_id=tenant_id,
-                                          user_name=self.username_textbox_destination.get("1.0", "end-1c"),
-                                          password=self.password_textbox_destination.get(),
-                                          json_to_push=loads(created_json_text_box.get("1.0", "end-1c")),
-                                          single_record=True)
+            ticket_count, status_code, completion_status, record_id, error_details = connect(
+                external_access_host=server_name_ip,
+                tenant_id=tenant_id,
+                user_name=self.username_textbox_destination.get(
+                    "1.0", "end-1c"),
+                password=self.password_textbox_destination.get(),
+                json_to_push=loads(
+                    created_json_text_box.get("1.0",
+                                              "end-1c")),
+                single_record=True)
+            if ticket_count == 1 and status_code == 200 and not str(completion_status).lower() == 'failed':
+                tk.messagebox.showinfo("Success", "One Entry Transferred Successfully")
+                button_transfer_one_entry.place_forget()
+                button_transfer_all_entries.place(relx=0.7, rely=0.81)
+            else:
+                tk.messagebox.showerror("Transfer Failed",
+                                        "Failed One Entry Transfer Failed. \nID: " + record_id + "\nCompletion_status: " + completion_status
+                                        + "\nError Details: " + str(error_details))
         except Exception:
-            tk.messagebox.showerror("Failed", "ERROR SENDING DATA - Status Code: " + status_code)
-        if result == 1:
-            tk.messagebox.showinfo("Success", "One Entry Transferred Successfully")
-        else:
-            tk.messagebox.showinfo("Failed", "One Entry Transfer Failed")
-        button_transfer_one_entry.place_forget()
-        button_transfer_all_entries.place(relx=0.64, rely=0.9)
+            tk.messagebox.showerror("Failed", "ERROR SENDING DATA")
 
     def transfer_all(self):
         #########################################
         # Do some task here to push all records  #
         #########################################
-        global status_code1, result1
-        with open('MF_SMAX_for_destination_updated_file.json') as dufl:
-            data = load(dufl)
+        global status_code1, result1, completion_status1
+        confirm_push = tk.messagebox.askquestion("Transfer All",
+                                                 "Are you sure you want to transfer all data ?\n It is irreversable. ")
+        if confirm_push.lower() == 'yes':
+            with open('MF_SMAX_for_destination_updated_file.json') as dufl:
+                data = load(dufl)
 
-        url = self.rest_url_textbox_destination.get("1.0", "end-1c")
-        server_name_ip = url.split('/')[2]
+            url = self.rest_url_textbox_destination.get("1.0", "end-1c")
+            server_name_ip = url.split('/')[2]
 
-        tenant_id_1 = url.split('/')
-        res = [int(ele) if ele.isdigit() else ele for ele in tenant_id_1]
-        res1 = list(i for i in res if isinstance(i, int))
-        tenant_id = int(res1[0])
+            tenant_id_1 = url.split('/')
+            res = [int(ele) if ele.isdigit() else ele for ele in tenant_id_1]
+            res1 = list(i for i in res if isinstance(i, int))
+            tenant_id = int(res1[0])
 
-        try:
-            result1, status_code1 = connect(external_access_host=server_name_ip,
-                                            tenant_id=tenant_id,
-                                            user_name=self.username_textbox_destination.get("1.0", "end-1c"),
-                                            password=self.password_textbox_destination.get(),
-                                            json_to_push=loads(transfer_text_box_all_json.get("1.0", "end-1c")),
-                                            multi_record=True)
+            try:
+                ticket_count1, status_code1, completion_status1, success_record_id1, failure_record_details1 = connect(
+                    external_access_host=server_name_ip,
+                    tenant_id=tenant_id,
+                    user_name=self.username_textbox_destination.get(
+                        "1.0",
+                        "end-1c"),
+                    password=self.password_textbox_destination.get(),
+                    json_to_push=loads(
+                        transfer_text_box_all_json.get(
+                            "1.0",
+                            "end-1c")),
+                    multi_record=True)
+                if ticket_count1 == len(data) and status_code1 is None and not str(
+                        completion_status1).lower() == 'failed' \
+                        and not failure_record_details1:
+                    tk.messagebox.showinfo("Success", "All Entries Transferred Successfully")
+                    error_output_textbox.insert(tk.END, "Transfer Completed Successfully: \n" + str(
+                        ticket_count1) + " Entry(s) Transferred out of " + str(
+                        len(data)) + " Entry(s)")
+                else:
+                    tk.messagebox.showinfo("Partial", str(ticket_count1) + " Entry(s) Transferred out of " + str(
+                        len(data)) + " Entry(s)")
+                    output_display = "***This output is logged in a logfile - 2smax.log*** \n\nPartial Transfer: \n" + str(
+                        ticket_count1) + " Entry(s) Transferred out of " + str(
+                        len(data)) + " Entry(s)\nFailure Entry(s) Details: " + str(
+                        dumps(failure_record_details1, indent=4))
+                    output_log = str(datetime.utcnow()) + "\n\nPartial Transfer: \n" + str(
+                        ticket_count1) + " Entry(s) Transferred out of " + str(
+                        len(data)) + " Entry(s)\nFailure Entry(s) Details: " + str(
+                        dumps(failure_record_details1, indent=4))
+                    error_output_textbox.insert(tk.END, output_display)
+                    open('2SMAX.log', 'w').write(output_log)
 
-        except Exception:
-            tk.messagebox.showerror("Failed", "ERROR SENDING DATA - Status Code: " + status_code1)
+                save_file = tk.messagebox.askquestion("Save", "Do you want to save the JSON Files(s) "
+                                                              "created during the execution ?")
+                if save_file.lower() == 'yes':
+                    pass
+                else:
+                    system("del /f MF_SMAX_source.json, MF_SMAX_for_destination_updated_file.json")
+                    tkinter.messagebox.showinfo("Done", "Removed Files successfully")
 
-        if result1 == len(data):
-            tk.messagebox.showinfo("Success", "All Entries Transferred Successfully")
+                edit_button.place_forget()
+                push_button.place_forget()
+
+                return_to_first_page_button.place(relx=0.5, rely=0.4)
+                exit_button.place(relx=0.5, rely=0.5)
+
+            except Exception:
+                tk.messagebox.showerror("Failed", "ERROR SENDING DATA")
+                # exception_type, exception_object, exception_traceback = sys.exc_info()
+                # filename = exception_traceback.tb_frame.f_code.co_filename
+                # line_number = exception_traceback.tb_lineno
+                # print("Exception type: ", exception_type)
+                # print("File name: ", filename)
+                # print("Line number: ", line_number)
         else:
-            tk.messagebox.showinfo("Partial", str(result1) + "Entry(s) Transferred out of " + str(len(data))
-                                   + "entry(s)")
-        save_file = tk.messagebox.askquestion("Save", "Do you want to save the JSON Files(s) "
-                                                      "created during the execution ?")
-        if save_file.lower() == 'yes':
-            pass
-        else:
-            system("del /f MF_SMAX_source.json, MF_SMAX_for_destination_updated_file.json")
-            tkinter.messagebox.showinfo("Deleted", "Removed Files successfully")
+            tk.messagebox.showinfo("Transfer All", "Transfer All Cancelled")
+            save_file = tk.messagebox.askquestion("Save", "Do you want to save the JSON Files(s) "
+                                                          "created during the execution ?")
+            if save_file.lower() == 'yes':
+                pass
+            else:
+                system("del /f MF_SMAX_source.json, MF_SMAX_for_destination_updated_file.json")
+                tkinter.messagebox.showinfo("Done", "Removed Files successfully")
 
-        edit_button.place_forget()
-        push_button.place_forget()
-
-        return_to_first_page_button.place(relx=0.5, rely=0.4)
-        exit_button.place(relx=0.5, rely=0.5)
+            edit_button.place_forget()
+            push_button.place_forget()
+            exit_button.place(relx=0.5, rely=0.5)
 
 
 if __name__ == "__main__":
